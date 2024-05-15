@@ -9,6 +9,9 @@ public class MonsterMovement : MonoBehaviour
     Vector3 directionToPlayer;
     public float monsterSpeed;
     public int erraticScale;
+    public float alertDistance = 8f;
+    public float escapeDistance = 6f;
+    public float destroyDistance;
 
     public enum States
     {
@@ -21,8 +24,6 @@ public class MonsterMovement : MonoBehaviour
 
     public States state = States.Idle;
 
-
-    // bagdf
 
 
     // Start is called before the first frame update
@@ -39,15 +40,19 @@ public class MonsterMovement : MonoBehaviour
         switch (state)
         {
             case States.Idle:
+                Debug.Log("Entering Idle state");
                 StartCoroutine(IdleState());
                 break;
             case States.Alert:
+                Debug.Log("Entering Alert state");
                 StartCoroutine(AlertState());
                 break;
             case States.Escape:
+                Debug.Log("Entering Escape state");
                 StartCoroutine(EscapeState());
                 break;
             case States.Target:
+                Debug.Log("Entering Target state");
                 StartCoroutine(TargetState());
                 break;
         }
@@ -63,6 +68,9 @@ public class MonsterMovement : MonoBehaviour
     // 1 or -1 for multiplying with rotation
     int binaryRotModifier = 1;
 
+    bool posBump = false;
+    float bumpAmount = 0.015f;
+
     float targetAngle = 0;
 
     IEnumerator IdleState()
@@ -73,6 +81,15 @@ public class MonsterMovement : MonoBehaviour
             {
                 // Move
                 transform.position += transform.forward * monsterSpeed/10f * Time.deltaTime;
+                if (posBump)
+                {
+                    transform.position += new Vector3(0,bumpAmount,0);
+                } else
+                {
+                    transform.position += new Vector3(0, -bumpAmount, 0);
+                }
+                posBump = !posBump;
+                
             } 
             else
             {
@@ -109,31 +126,114 @@ public class MonsterMovement : MonoBehaviour
             // ******
 
             moveRotScale = Mathf.Clamp(moveRotScale, 0, 100);
-            Debug.Log(rotationDirection);
             rotationDirection = Mathf.Clamp(rotationDirection, 0, 100);
+
+            // If player close enough to alert, go to alert state
+            if(Vector3.Distance(transform.position, player.position) < alertDistance)
+            {
+                state = States.Alert;
+            }
 
             yield return null;
         }
+        NextState();
     }
 
     IEnumerator AlertState()
     {
-        yield return null;
+        Vector3 saveScale = transform.localScale;
+        float startTime = Time.time;
+
+        while (state == States.Alert)
+        {
+            float wave = Mathf.Sin(Time.time * 30f) * 0.1f + 1f;
+            float wave2 = Mathf.Cos(Time.time * 30f) * 0.1f + 1f;
+            transform.localScale = new Vector3(wave, wave2, wave);
+
+            float shimmy = Mathf.Sin(Time.time * 30f) * 0.9f + 0.3f;
+
+            transform.position += transform.right * shimmy * Time.deltaTime;
+
+            Vector3 playerDirection = player.position - transform.position;
+            playerDirection.y = 0f; // locks rotation to y axis
+            playerDirection.Normalize();
+
+            Quaternion targetRotation = Quaternion.LookRotation(playerDirection);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0f, targetRotation.eulerAngles.y, 0f), monsterSpeed * 25f * Time.deltaTime);
+
+            // If player too close then go to escape state
+            if (Vector3.Distance(transform.position, player.position) < escapeDistance)
+            {
+                state = States.Escape;
+            }
+
+            // If player too far then go back to idle state
+            if (Vector3.Distance(transform.position, player.position) > alertDistance)
+            {
+                state = States.Idle;
+            }
+
+            // If player alerting for too long then go to escape state
+            if (Time.time - startTime > 3f)
+            {
+                state = States.Escape;
+            }
+
+            //If moving to Escape state - do a 180
+            if(state == States.Escape)
+            {
+                transform.rotation *= Quaternion.Euler(0f, 180f, 0f);
+            }
+
+
+            yield return null;
+        }
+        transform.localScale = saveScale;
+        NextState();
     }
 
     IEnumerator EscapeState()
     {
-        yield return null;
+        float startTime = Time.time;
+        Vector3 saveScale = transform.localScale;
+
+        while (state == States.Escape)
+        {
+            float wave = Mathf.Sin(Time.time * 30f) * 0.1f + 1f;
+            float wave2 = Mathf.Cos(Time.time * 30f) * 0.1f + 1f;
+            transform.localScale = new Vector3(wave, wave2, wave);
+
+            float shimmy = Mathf.Sin(Time.time * 30f) * 0.9f + 0.3f;
+
+            transform.position += transform.right * shimmy * Time.deltaTime;
+
+            transform.position += transform.forward * monsterSpeed / 5f * Time.deltaTime;
+
+            if (Time.time - startTime > 3f)
+            {
+                state = States.Idle;
+            }
+            yield return null;
+        }
+        transform.localScale = saveScale;
+        NextState();
     }
 
     IEnumerator TargetState()
     {
+        // Make a new monster type that is agro. This is the passive one. Target wont be used here
         yield return null;
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+        // Destroy monster when attacked in range
+        if (Vector3.Distance(transform.position, player.position) <= destroyDistance && Input.GetMouseButton(0))
+        {
+            // Destroy the object
+            Destroy(gameObject);
+            Debug.Log("MONSTER DESTROYED");
+        }
     }
 }
