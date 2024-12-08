@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class MonsterAgroMovement : MonoBehaviour
 {
@@ -11,6 +12,8 @@ public class MonsterAgroMovement : MonoBehaviour
     public float alertDistance = 8f;
     public float escapeDistance = 6f;
     public float destroyDistance;
+    public TMP_Text text;
+
 
     public enum States
     {
@@ -36,6 +39,7 @@ public class MonsterAgroMovement : MonoBehaviour
 
     void NextState()
     {
+        text.text = state.ToString();
         switch (state)
         {
             case States.Idle:

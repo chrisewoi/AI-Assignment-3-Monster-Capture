@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
+using TMPro;
 
 public class MonsterMovement : MonoBehaviour
 {
@@ -12,6 +13,7 @@ public class MonsterMovement : MonoBehaviour
     public float alertDistance = 8f;
     public float escapeDistance = 6f;
     public float destroyDistance;
+    public TMP_Text text;
 
     public enum States
     {
@@ -19,7 +21,6 @@ public class MonsterMovement : MonoBehaviour
         Alert,
         Escape,
         Target
-
     }
 
     public States state = States.Idle;
@@ -33,10 +34,12 @@ public class MonsterMovement : MonoBehaviour
         directionToPlayer = player.position - transform.position;
         directionToPlayer.Normalize();
         transform.Rotate(Vector3.up, Random.Range(0,360));
+        //text = GetComponentInChildren<TMP_Text>();
     }
 
     void NextState()
     {
+        text.text = state.ToString();
         switch (state)
         {
             case States.Idle:
